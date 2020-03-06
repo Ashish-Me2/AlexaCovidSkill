@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using AlexaCovid.Extensions;
 using System.Net.Http;
+using System.Linq;
 
 namespace AlexaCovid
 {
@@ -119,12 +120,14 @@ namespace AlexaCovid
         {
             String finalVal = String.Empty;
             HttpClientHandler handler = new HttpClientHandler();
-            handler.UseDefaultCredentials = true;
+            //handler.UseDefaultCredentials = true;
             HttpClient client = new HttpClient(handler);
 
             try
             {
-                HttpResponseMessage response = await client.GetAsync("https://www.ecdc.europa.eu/en/geographical-distribution-2019-ncov-cases");
+                //HttpResponseMessage response = await client.GetAsync("https://www.ecdc.europa.eu/en/geographical-distribution-2019-ncov-cases");
+                HttpResponseMessage response = await client.GetAsync("https://www.worldometers.info/coronavirus", HttpCompletionOption.ResponseContentRead);
+
                 response.EnsureSuccessStatusCode();
                 string retVal = await response.Content.ReadAsStringAsync();
                 log.LogInformation("Data Table - " + retVal);
@@ -132,24 +135,41 @@ namespace AlexaCovid
 
                 retVal = retVal.Replace("\n", "");
                 retVal = retVal.Replace("\t", "");
-                int startTable = retVal.IndexOf("<th>Places reporting cases</th>");
+                retVal = retVal.ToUpper().Trim();
+                //int startTable = retVal.IndexOf("<th>Places reporting cases</th>");
+                int startTable = retVal.IndexOf("<TH WIDTH=\"100\">COUNTRY");
+
                 log.LogInformation("startTable - " + startTable);
 
-                int startBody = retVal.IndexOf("<tbody>", startTable);
+                int startBody = retVal.IndexOf("<TBODY>", startTable);
                 log.LogInformation("startBody - " + startBody);
 
-                int endBody = retVal.IndexOf("</tbody>", startBody + 10);
+                int endBody = retVal.IndexOf("</TBODY>", startBody + 10);
                 log.LogInformation("endBody - " + endBody);
 
                 string tableBody = retVal.Substring(startBody, endBody - startBody).ToUpper();
                 log.LogInformation("tableBody - " + tableBody);
 
                 //------------------------------------------------------------------------------------
-                int locStart = tableBody.IndexOf(Location);
+                int locStart = tableBody.IndexOf(Location.Trim().ToUpper());
                 int locEnd = tableBody.IndexOf("</TR>", locStart + 1);
                 string locBody = tableBody.Substring(locStart, locEnd - locStart);
-                locBody = locBody.Replace("</TD><TD>", "-").Replace("</TD>", "");
-                finalVal = Location + " has " + locBody.Split("-".ToCharArray())[1] + " total positive cases and " + locBody.Split("-".ToCharArray())[2] + " deaths from Coronavirus till now.";
+                log.LogInformation("locBody - " + locBody);
+                locBody = SanitizeBody(locBody);
+                List<string> data = new List<string>();
+                locBody.Split("^".ToCharArray()).ToList<string>().ForEach(d => {
+                    if (d.Length == 0)
+                    {
+                        data.Add("0");
+                    }
+                    else
+                    {
+                        data.Add(d);
+                    }
+                });
+
+                finalVal = data[0] + " has " + data[1] + " total cases, " + data[2] + " new cases, " + data[3] + " total deaths, " + data[4] + " new deaths, " + data[5] + " active cases, " + data[6] + " total recovered and " + data[7] + " serious cases of Coronavirus till now.";
+                log.LogInformation("Final Response - " + finalVal);
             }
             catch (Exception e)
             {
@@ -161,6 +181,17 @@ namespace AlexaCovid
             client.Dispose();
 
             return finalVal;
+        }
+
+        private static string SanitizeBody(string InputText)
+        {
+            string retVal = String.Empty;
+            retVal = InputText.Replace(" ", "");
+            retVal = retVal.Replace("</TD>", "^").Replace("<TDSTYLE=\"FONT-WEIGHT:BOLD;TEXT-ALIGN:RIGHT\">", "").Replace("<TDSTYLE=\"FONT-WEIGHT:NORMAL;TEXT-ALIGN:RIGHT;BACKGROUND-COLOR:#FFEEAA;\">", "");
+            retVal = retVal.Replace("<TDSTYLE=\"FONT-WEIGHT:BOLD;TEXT-ALIGN:RIGHT;\">", "").Replace("<TDSTYLE=\"FONT-WEIGHT:BOLD;TEXT-ALIGN:RIGHT;BACKGROUND-COLOR:RED;COLOR:WHITE\">", "").Replace("<TDSTYLE=\"FONT-SIZE:14PX;TEXT-ALIGN:RIGHT;FONT-WEIGHT:BOLD;\">", "");
+            retVal = retVal.Replace("<TDSTYLE=\"FONT-WEIGHT:NORMAL;TEXT-ALIGN:RIGHT;\">", "");
+            retVal = retVal.Substring(0, retVal.Length - 1);
+            return retVal;
         }
 
 
