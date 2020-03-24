@@ -168,7 +168,7 @@ namespace AlexaCovid
                     }
                 });
 
-                finalVal = data[0] + " has " + data[1] + " total cases, " + data[2] + " new cases, " + data[3] + " total deaths, " + data[4] + " new deaths, " + data[5] + " active cases, " + data[6] + " total recovered and " + data[7] + " serious cases of Coronavirus till now.";
+                finalVal = data[0] + " has " + data[1] + " total cases, " + data[2] + " new cases, " + data[3] + " total deaths, " + data[4] + " new deaths, " + data[5] + " total recovered, " + data[6] + " active cases and " + data[7] + " serious cases of Coronavirus till now.";
                 log.LogInformation("Final Response - " + finalVal);
             }
             catch (Exception e)
@@ -185,11 +185,15 @@ namespace AlexaCovid
 
         private static string SanitizeBody(string InputText)
         {
-            string retVal = String.Empty;
+            string retVal = System.Text.RegularExpressions.Regex.Replace(InputText, @"<(.|\n)*?>", string.Empty);
+
             retVal = InputText.Replace(" ", "");
             retVal = retVal.Replace("</TD>", "^").Replace("<TDSTYLE=\"FONT-WEIGHT:BOLD;TEXT-ALIGN:RIGHT\">", "").Replace("<TDSTYLE=\"FONT-WEIGHT:NORMAL;TEXT-ALIGN:RIGHT;BACKGROUND-COLOR:#FFEEAA;\">", "");
             retVal = retVal.Replace("<TDSTYLE=\"FONT-WEIGHT:BOLD;TEXT-ALIGN:RIGHT;\">", "").Replace("<TDSTYLE=\"FONT-WEIGHT:BOLD;TEXT-ALIGN:RIGHT;BACKGROUND-COLOR:RED;COLOR:WHITE\">", "").Replace("<TDSTYLE=\"FONT-SIZE:14PX;TEXT-ALIGN:RIGHT;FONT-WEIGHT:BOLD;\">", "");
             retVal = retVal.Replace("<TDSTYLE=\"FONT-WEIGHT:NORMAL;TEXT-ALIGN:RIGHT;\">", "");
+            retVal = retVal.Replace("<TDSTYLE=\"FONT-WEIGHT:BOLD;TEXT-ALIGN:RIGHT;BACKGROUND-COLOR:#FFEEAA;\">", "");
+            retVal = retVal.Replace("<TDSTYLE=\"TEXT-ALIGN:RIGHT;FONT-WEIGHT:BOLD;\">", "");
+
             retVal = retVal.Substring(0, retVal.Length - 1);
             return retVal;
         }
